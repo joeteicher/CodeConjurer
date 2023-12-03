@@ -77,11 +77,40 @@ def synthesize_best_mvp(mvp1, mvp2, mvp3):
     system_prompt += "Extract the best elements from each description and combine them into a single, optimized MVP. "
     system_prompt += "Eliminate any redundant or unnecessary elements. "
     system_prompt += "Ensure the final MVP is coherent, practical, and captures the essence of the best ideas. "
-    system_prompt += f"MVP Descriptions:\n\n{combined_mvp_descriptions}"
+    prompt = f"MVP Descriptions:\n\n{combined_mvp_descriptions}"
 
-    response = send_text_request(system_prompt)
+    response = send_text_request(prompt, system_prompt)
     return parse_text_response(response)
 
+def synthesize_best_code(component_description, file_name, mvp_description, file_code1, file_code2, file_code3):
+    """
+    Synthesizes the best aspects of three code attempts into a refined version of a file.
+
+    Args:
+        component_description: str, the description of the component.
+        file_name: str, the name of the file to be synthesized.
+        mvp_description: str, the description of the MVP.
+        file_code1: str, the first attempt at writing the file.
+        file_code2: str, the second attempt.
+        file_code3: str, the third attempt.
+    
+    Returns:
+        str: The synthesized and improved code for the file.
+    """
+    system_prompt = "You are a highly skilled software engineer and code synthesizer. "
+    system_prompt += "Given three different attempts at coding a file, synthesize the best parts from each to create an optimized version of the file. "
+    system_prompt += "Focus on ensuring that all functions are fully implemented with valid code, and all necessary dependencies are referenced. "
+    system_prompt += "The final code should align with the provided component description and the overall MVP context. "
+    prompt = f"File Name: {file_name}\n"
+    prompt += f"Component Description: {component_description}\n"
+    prompt += f"MVP Description: {mvp_description}\n\n"
+    prompt += "Code Attempt 1:\n" + file_code1 + "\n\n"
+    prompt += "Code Attempt 2:\n" + file_code2 + "\n\n"
+    prompt += "Code Attempt 3:\n" + file_code3
+
+    response = send_text_request(prompt, system_prompt)
+    txt_reponse = parse_text_response(response)
+    return extract_code_from_string(txt_reponse)
 
 def get_component_list(mvp_description):
     """
@@ -89,18 +118,17 @@ def get_component_list(mvp_description):
     :param mvp_description: str, the MVP description.
     :return: list, the generated component list.
     """
-    system_prompt = "You are an adept software architect with a specialization in Python. "
-    system_prompt += "Given a detailed MVP (Minimum Viable Product) description provided, "
-    system_prompt += "your task is to decompose it into an actionable list of components. "
-    system_prompt += "For each component, detail the corresponding files, functions, data structures, "
-    system_prompt += "and dependencies, organizing this information in a JSON format. "
-    system_prompt += "Each file should be a separate item in the JSON list, containing comprehensive technical details. "
-    system_prompt += "Include file organization, inter-component communication strategies, and any other relevant technical specifications. "
-    system_prompt += "The JSON output should be clear, well-structured, and ready for immediate use by a development team. "
-    system_prompt += "Ensure the proposed architecture promotes modularity, maintainability, and scalability."
+    system_prompt = "You are an experienced software architect with expertise in creating Minimal Viable Products (MVPs) using Python. "
+    system_prompt += "Given the provided MVP description, your task is to identify and list only the essential components required to build the MVP. "
+    system_prompt += "Focus on simplicity and necessity, avoiding any superfluous features or components that do not directly contribute to the MVP's core functionality. "
+    system_prompt += "For each identified component, briefly outline the corresponding essential files, primary functions, core data structures, and critical dependencies. "
+    system_prompt += "Organize this information in a concise JSON format. "
+    system_prompt += "The architecture should be straightforward, promoting modularity and maintainability, while ensuring that each component is vital for the MVP's operation. "
+    system_prompt += "Remember, the goal is to create a streamlined, efficient architecture that embodies the MVP philosophy of 'less is more.'"
 
     response = send_json_request(mvp_description, system_prompt)
     return parse_json_response(response)
+
 
 def parse_text_response(response):
     """
@@ -154,13 +182,13 @@ def generate_py_file_for_component(component, file_name, mvp_context):
     system_prompt += "Use the file extension to determine the programming language or markup language. "
     system_prompt += "Ensure the output contains only valid code or markup and necessary comments, "
     system_prompt += "and that it aligns with the MVP context provided. "
-    system_prompt += f"Component Name: {component}. "
-    system_prompt += f"MVP Context: {mvp_context}. "
-    system_prompt += f"File Name and Extension: {file_name}. "
-    system_prompt += f"Language: {language}. "
-    system_prompt += "Please generate content that accurately reflects the specified file within the component within the MVP framework."
+    prompt = f"Component Name: {component}. "
+    prompt += f"MVP Context: {mvp_context}. "
+    prompt += f"File Name and Extension: {file_name}. "
+    prompt += f"Language: {language}. "
+    prompt += "Please generate content that accurately reflects the specified file within the component within the MVP framework."
 
-    response = send_text_request(system_prompt)
+    response = send_text_request(prompt, system_prompt)
     txt_reponse = parse_text_response(response)
     return extract_code_from_string(txt_reponse)
 
@@ -176,16 +204,28 @@ def extract_code_from_string(input_string):
     """
     start_markers = []
     start_markers.append("```python")
-    
+    start_markers.append("```html")
+    start_markers.append("```js")
+    start_markers.append("```javascript")
+    start_markers.append("```css")
+    start_markers.append("```java")
+    start_markers.append("```cpp")
+
+
     end_marker = "```"
     code = []
     capture = False
 
+    inputarr = input_string.split('\n')
+
     for line in input_string.split('\n'):
-        if start_marker in line:
-            capture = True
+        if not capture:
+            for start_marker in start_markers:
+                if start_marker in line:
+                    capture = True
             continue
-        elif end_marker in line and capture:
+
+        if end_marker in line and capture:
             break
         if capture:
             code.append(line)
@@ -237,73 +277,89 @@ def determine_language_from_extension(extension):
     return extension_to_language.get(extension.lower(), 'Unknown')
 
 
-def summarize_python_file(file_content):
+def document_code_file(file_name, component_description, mvp_context):
     """
-    Summarizes a Python file, focusing on its functions and their potential use in dependency detection.
+    Generates documentation for a Python file, considering the component description and MVP context.
+
+    Args:
+        file_name: str, the name of the file to be documented.
+        component_description: str, a description of the component.
+        mvp_context: str, the context or description of the MVP.
+    
+    Returns:
+        str: The generated documentation for the file.
+    """
+    with open(file_name, 'r') as f:
+        file_content = f.read()
+    system_prompt = "You are an expert in Python programming and technical writing. "
+    system_prompt += "Given the content of a Python file, component description, and MVP context, "
+    system_prompt += "create detailed documentation for the file. "
+    system_prompt += "The documentation should describe the purpose and functionality of each function and class in the file, "
+    system_prompt += "and how they relate to the component and overall MVP. "
+    system_prompt += "Please ensure the documentation is clear, concise, and useful for understanding the file's role in the project.\n"
+    prompt = f"Component Description: {component_description}\n"
+    prompt += f"MVP Context: {mvp_context}\n"
+    prompt += f"Python File Content:\n\n{file_content}"
+
+    response = send_text_request(prompt, system_prompt)
+    return parse_text_response(response)
+
+def critique_code_file(file_name, component_description, mvp_context):
+    """
+    Critiques a Python file, providing insights on improvements, missing elements, 
+    and alignment with the component description and MVP context.
 
     Args:
         file_content: str, the content of the Python file.
-
+        file_name: str, the name of the file to be critiqued.
+        component_description: str, a description of the component.
+        mvp_context: str, the context or description of the MVP.
+    
     Returns:
-        str: Summary of the Python file, highlighting the key functions and their uses.
+        str: The critique of the Python file.
     """
-    system_prompt = "You are an expert in Python programming and code analysis. "
-    system_prompt += "Given the content of a Python file, provide a detailed summary. "
-    system_prompt += "Focus on the functions defined in the file, "
-    system_prompt += "including their names, purposes, inputs, outputs, and how they might be useful in dependency detection. "
-    system_prompt += "The summary should be concise yet comprehensive, "
-    system_prompt += "highlighting key aspects that are relevant for understanding the file's functionality and structure. "
-    system_prompt += "Here is the Python file content:\n\n"
-    system_prompt += file_content
+    with open(file_name, 'r') as f:
+        file_content = f.read()
+    system_prompt = "You are an experienced software developer and code reviewer. "
+    system_prompt += "Given the content of a code file, component description, and MVP context, "
+    system_prompt += "provide a detailed critique of the file. "
+    system_prompt += "Identify areas that need improvement, any missing functionalities or dependencies, "
+    system_prompt += "and suggest how the file could better fulfill its role in the component and MVP. "
+    system_prompt += "Highlight any functions that need additional work and offer guidance on aligning the file with best practices and project requirements. "
+    prompt = f"Component Description: {component_description}\n"
+    prompt += f"MVP Context: {mvp_context}\n"
+    prompt += f"Python File Content:\n\n{file_content}"
 
-    response = send_text_request(system_prompt)
+    response = send_text_request(prompt, system_prompt)
     return parse_text_response(response)
 
-def index_python_file(file_content):
+def generate_unit_tests_for_file(file_name, component_description, mvp_context):
     """
-    Indexes a Python file, organizing its components such as functions, classes, and global variables.
+    Generates comprehensive unit tests for a Python file based on its content, 
+    component description, and MVP context.
 
     Args:
         file_content: str, the content of the Python file.
-
+        file_name: str, the name of the file for which unit tests are to be generated.
+        component_description: str, a description of the component.
+        mvp_context: str, the context or description of the MVP.
+    
     Returns:
-        str: An index of the Python file's components, with brief descriptions or summaries.
+        str: The generated unit tests for the Python file.
     """
-    system_prompt = "You are an expert in Python programming with skills in code organization and documentation. "
-    system_prompt += "Given the content of a Python file, create a detailed index. "
-    system_prompt += "The index should categorize and list all major components of the file, such as functions, classes, and global variables. "
-    system_prompt += "Provide brief descriptions or summaries for each component, "
-    system_prompt += "highlighting their purpose and functionality in the file's overall structure. "
-    system_prompt += "The index should be clear, well-organized, and useful for understanding the file's content at a glance. "
-    system_prompt += "Here is the Python file content:\n\n"
-    system_prompt += file_content
+    with open(file_name, 'r') as f:
+        file_content = f.read()
+    system_prompt = "You are an expert in software testing and Python. "
+    system_prompt += "Given the content of a Python file, the component description, and MVP context, "
+    system_prompt += "create a comprehensive set of unit tests for the file. "
+    system_prompt += "The unit tests should cover all functions and classes, ensuring that each aspect of the file "
+    system_prompt += "works correctly and fulfills its intended role in the component and MVP. "
+    system_prompt += "Consider edge cases, expected behaviors, and error handling in your test cases. "
+    prompt = f"Component Description: {component_description}\n"
+    prompt += f"MVP Context: {mvp_context}\n"
+    prompt += f"Python File Content:\n\n{file_content}"
 
-    response = send_text_request(system_prompt)
-    return parse_text_response(response)
-
-def generate_unit_test_for_function(file_content, function_name, component_description):
-    """
-    Generates a unit test for a specified function in a Python file, considering the component description for context.
-
-    Args:
-        file_content: str, the content of the Python file containing the function.
-        function_name: str, the name of the function to be tested.
-        component_description: str, a description of the component for contextual understanding.
-
-    Returns:
-        str: The generated unit test code for the specified function.
-    """
-    system_prompt = "You are a skilled Python developer with expertise in writing unit tests. "
-    system_prompt += "Given the content of a Python file and a specific function within it, "
-    system_prompt += "along with a description of the component it belongs to, create a comprehensive unit test for that function. "
-    system_prompt += "The test should cover various scenarios and edge cases, ensuring the function's robustness and correctness. "
-    system_prompt += "Consider the component description for contextual understanding of the function's purpose and use. "
-    system_prompt += f"Python File Content:\n\n{file_content}\n\n"
-    system_prompt += f"Function Name: {function_name}\n"
-    system_prompt += f"Component Description: {component_description}\n"
-    system_prompt += "Please generate a unit test that accurately tests the specified function."
-
-    response = send_text_request(system_prompt)
+    response = send_text_request(prompt, system_prompt)
     return parse_text_response(response)
 
 
