@@ -57,13 +57,46 @@ def generate_python_files_for_component(component_name, project_directory):
         with open(f"{project_directory}/{file_name}", 'w') as file:
             file.write(file_code)
 
-def summarize_python_file(file_name, project_directory):
-    knowledge_dir = os.path.join(project_directory, 'knowledge')
-    with open(os.path.join(project_directory, file_name), 'r') as file:
-        file_content = file.read()
-    summary = llm_api.summarize_python_file(file_content)
-    with open(os.path.join(knowledge_dir, f'{file_name}_summary.txt'), 'w') as file:
-        file.write(summary)
+def generate_best_code_for_component(component_name, project_directory):
+    knowledge_dir = f"{project_directory}/knowledge"
+    mvp_description = ""
+    with open(f"{knowledge_dir}/mvp_description.txt", 'r') as file:
+        mvp_description = file.read()
+    with open(f"{knowledge_dir}/component_list.json", 'r') as file:
+        json_data = json.load(file)
+        component_description = None
+    files = []
+    for component in json_data.get("components", []):
+        if component["name"] == component_name:
+            component_description = component
+            files = [file["filename"] for file in component.get("files", [])]
+    for file_name in files:
+        file_code1 = llm_api.generate_py_file_for_component(component_description, file_name, mvp_description)
+        file_code2 = llm_api.generate_py_file_for_component(component_description, file_name, mvp_description)
+        file_code3 = llm_api.generate_py_file_for_component(component_description, file_name, mvp_description)
+        file_code = llm_api.synthesize_best_code(component_description, mvp_description, file_name, file_code1, file_code2, file_code3)
+        with open(f"{project_directory}/{file_name}", 'w') as file:
+            file.write(file_code)
+
+def document_component(component_name, project_directory):
+    knowledge_dir = f"{project_directory}/knowledge"
+    mvp_description = ""
+    with open(f"{knowledge_dir}/mvp_description.txt", 'r') as file:
+        mvp_description = file.read()
+    with open(f"{knowledge_dir}/component_list.json", 'r') as file:
+        json_data = json.load(file)
+
+    component_description = None
+    files = []
+    for component in json_data.get("components", []):
+        if component["name"] == component_name:
+            component_description = component
+            files = [file["filename"] for file in component.get("files", [])]
+    for file_name in files:
+        doc_name = file_name.replace('.py', '.md')
+        doc_code = llm_api.document_code_file(file_name, component_description,mvp_description)
+        with open(f"{knowledge_dir}/{doc_name}", 'w') as file:
+            file.write(doc_code)
 
 def index_python_file(file_name, project_directory):
     knowledge_dir = os.path.join(project_directory, 'knowledge')
@@ -72,6 +105,11 @@ def index_python_file(file_name, project_directory):
     index = llm_api.index_python_file(file_content)
     with open(os.path.join(knowledge_dir, f'{file_name}_index.json'), 'w') as file:
         json.dump(index, file, indent=4)
+
+def load_knowledge_assistant(project_directory):
+    knowledge_dir = os.path.join(project_directory, 'knowledge')
+    knowledge_builder.build_knowledge_graph(knowledge_dir)
+    knowledge_searcher.load_knowledge_graph(knowledge_dir)
 
 def add_new_python_file(file_path, description, context):
     with open(file_path, 'w') as file:
@@ -177,15 +215,16 @@ def main_menu():
     print("0. Set Project")
     print("1. Generate MVP")
     print("2. Get Component List")
-    print("3. Generate Python File for Component")
-    print("4. Summarize Python File")
-    print("5. Index Python File")
-    print("6. Generate Unit Test for Function")
-    print("7. Fix Unit Test Failure")
-    print("8. Generate Main Entry Point")
-    print("9. Exit")
+    print("3. Generate Code Files for Component")
+    print("4. Document Component")
+    print("5. Load RAG assistant")
+    print("6. Criitique Component")
+    print("7. Generate Unit Tests for Component")
+    print("8. Fix Component")
+    print("9. Generate Main Entry Point")
+    print("10. Exit")
 
-    choice = input("Enter your choice (0-9): ")
+    choice = input("Enter your choice (0-10): ")
     return choice
 
 def main():
@@ -212,13 +251,12 @@ def main():
             generate_component_list(project_directory)
         elif choice == '3' and project_directory:
             component_name = input("Enter component name: ")
-            generate_python_files_for_component(component_name, project_directory)
+            generate_best_code_for_component(component_name, project_directory)
         elif choice == '4' and project_directory:
-            file_name = input("Enter the Python file to summarize: ")
-            summarize_python_file(file_name, project_directory)
+            component_name = input("Enter component name: ")
+            document_component(component_name, project_directory)
         elif choice == '5' and project_directory:
-            file_name = input("Enter the Python file to index: ")
-            index_python_file(file_name, project_directory)
+            load_knowledge_assistant(project_directory)
         elif choice == '6' and project_directory:
             file_name = input("Enter the Python file: ")
             function_name = input("Enter the name of the function to test: ")
