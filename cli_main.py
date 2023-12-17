@@ -1,13 +1,12 @@
 import os
 from UI.display_utils import display_results
-import CodeGenerator.code_generator as code_generator
-import CodeGenerator.code_modifier as code_modifier
 import LLMAPIInterface.llm_api as llm_api
-import KnowledgeGraphBuilder.knowledge_searcher as knowledge_searcher
-import KnowledgeGraphBuilder.knowledge_builder as knowledge_builder
+import LLMAPIInterface.knowledge_asst as knower
+import LLMAPIInterface.doppleganger as doppleganger
 import json
 import subprocess
 
+minime = None
 
 def generate_mvp(description, project_directory):
     knowledge_dir = f"{project_directory}/knowledge"
@@ -93,10 +92,52 @@ def document_component(component_name, project_directory):
             component_description = component
             files = [file["filename"] for file in component.get("files", [])]
     for file_name in files:
-        doc_name = file_name.replace('.py', '.md')
-        doc_code = llm_api.document_code_file(file_name, component_description,mvp_description)
+        doc_name = file_name.rsplit('.', 1)[0] + '_doc.txt'
+        full_name = f"{project_directory}/{file_name}"
+        doc_code = llm_api.document_code_file(full_name, component_description,mvp_description)
         with open(f"{knowledge_dir}/{doc_name}", 'w') as file:
             file.write(doc_code)
+
+def critique_component(component_name, project_directory):
+    knowledge_dir = f"{project_directory}/knowledge"
+    mvp_description = ""
+    with open(f"{knowledge_dir}/mvp_description.txt", 'r') as file:
+        mvp_description = file.read()
+    with open(f"{knowledge_dir}/component_list.json", 'r') as file:
+        json_data = json.load(file)
+    
+    component_description = None
+    files = []
+    for component in json_data.get("components", []):
+        if component["name"] == component_name:
+            component_description = component
+            files = [file["filename"] for file in component.get("files", [])]
+    for file_name in files:
+        critique_name = file_name.rsplit('.', 1)[0] + '_critique.txt'
+        full_name = f"{project_directory}/{file_name}"
+        critique_code = llm_api.critique_code_file(full_name, component_description,mvp_description)
+        with open(f"{knowledge_dir}/{critique_name}", 'w') as file:
+            file.write(critique_code)
+
+def generate_unit_tests_for_component(component_name, project_directory):
+    knowledge_dir = f"{project_directory}/knowledge"
+    mvp_description = ""
+    with open(f"{knowledge_dir}/mvp_description.txt", 'r') as file:
+        mvp_description = file.read()
+    with open(f"{knowledge_dir}/component_list.json", 'r') as file:
+        json_data = json.load(file)
+    component_description = None
+    files = []
+    for component in json_data.get("components", []):
+        if component["name"] == component_name:
+            component_description = component
+            files = [file["filename"] for file in component.get("files", [])]
+    for file_name in files:
+        unit_test_name = file_name.rsplit('.', 1)[0] + '_tests.py'
+        full_name = f"{project_directory}/{file_name}"
+        unit_test_code = llm_api.generate_unit_tests_for_file(full_name, component_description,mvp_description)
+        with open(f"{project_directory}/{unit_test_name}", 'w') as file:
+            file.write(unit_test_code)
 
 def index_python_file(file_name, project_directory):
     knowledge_dir = os.path.join(project_directory, 'knowledge')
@@ -106,30 +147,8 @@ def index_python_file(file_name, project_directory):
     with open(os.path.join(knowledge_dir, f'{file_name}_index.json'), 'w') as file:
         json.dump(index, file, indent=4)
 
-def load_knowledge_assistant(project_directory):
-    knowledge_dir = os.path.join(project_directory, 'knowledge')
-    knowledge_builder.build_knowledge_graph(knowledge_dir)
-    knowledge_searcher.load_knowledge_graph(knowledge_dir)
-
-def add_new_python_file(file_path, description, context):
-    with open(file_path, 'w') as file:
-        content = code_generator.generate_code(description, context)
-        file.write(content)
-
-def modify_existing_file(file_path, modification, context):
-    with open(file_path, 'a') as file:
-        modified_content = code_modifier.modify_code(file.read(), modification, context)
-        file.write(modified_content)
-
-def generate_unit_test_for_function(file_name, function_name, project_directory):
-    knowledge_dir = os.path.join(project_directory, 'knowledge')
-    with open(os.path.join(project_directory, file_name), 'r') as file:
-        file_content = file.read()
-    function_description = llm_api.get_function_description(file_content, function_name)
-    unit_test = llm_api.generate_unit_tests(function_description)
-    with open(os.path.join(knowledge_dir, f'{function_name}_unit_test.py'), 'w') as file:
-        file.write(unit_test)
-
+def load_rag_assistant(project_directory):
+    knower.init_load_files(project_directory)
 
 def run_unit_test_and_get_output(unit_test_path):
     """
@@ -196,7 +215,7 @@ def read_project_directory(config_file='config.txt'):
 
     Args:
         config_file: str, the path to the configuration file.
-
+3
     Returns:
         str: The project directory or None if the config file doesn't exist.
     """
@@ -221,10 +240,13 @@ def main_menu():
     print("6. Criitique Component")
     print("7. Generate Unit Tests for Component")
     print("8. Fix Component")
-    print("9. Generate Main Entry Point")
-    print("10. Exit")
+    print("9. Exit")
+    print("10. Find missing links")
+    print("11. Find redundancies")
+    print("12. Load Doppleganger")
+    print("13. Converse with Doppleganger")
 
-    choice = input("Enter your choice (0-10): ")
+    choice = input("Enter your choice (0-13): ")
     return choice
 
 def main():
@@ -256,20 +278,23 @@ def main():
             component_name = input("Enter component name: ")
             document_component(component_name, project_directory)
         elif choice == '5' and project_directory:
-            load_knowledge_assistant(project_directory)
+            load_rag_assistant(project_directory)
         elif choice == '6' and project_directory:
-            file_name = input("Enter the Python file: ")
-            function_name = input("Enter the name of the function to test: ")
-            generate_unit_test_for_function(file_name, function_name, project_directory)
+            component_name = input("Enter component name: ")
+            critique_component(component_name, project_directory)
         elif choice == '7' and project_directory:
-            file_name = input("Enter the content of the original Python file: ")
-            unit_test_name = input("Enter the unit test content: ")
-            fix_unit_test_failure(file_name, unit_test_name, project_directory)
+            component_name = input("Enter component name: ")
+            generate_unit_tests_for_component(component_name, project_directory)
         elif choice == '8' and project_directory:
             generate_main_entry_point(project_directory)
         elif choice == '9':
             print("Exiting CodeSorcerer. Goodbye!")
             break
+        elif choice == "12":
+            minime = doppleganger.init_or_load()
+        elif choice == "13":
+            prompt = input("Enter your prompt: ")
+            print(doppleganger.iterate_conversation(prompt, minime))
         else:
             print("Invalid choice or project not set. Please select a valid option or set a project.")
 

@@ -5,13 +5,17 @@ import openai
 from openai import OpenAI
 import logging
 
+import logging
+
 # Configure logging
 logging.basicConfig(
-    level=logging.INFO, 
-    format='%(asctime)s - %(levelname)s - %(message)s',
-    filename='app.log',  # Use 'filename' to log to a file, remove it to log to the console
-    filemode='a'  # 'w' for overwrite mode, 'a' for append mode
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    filename='app.log',
+    filemode='a'
 )
+
+
 
 
 def get_client():
@@ -118,6 +122,8 @@ def get_component_list(mvp_description):
     :param mvp_description: str, the MVP description.
     :return: list, the generated component list.
     """
+    with open("comp_list_template.txt", 'r') as f:
+        comp_list_template = f.read()
     system_prompt = "You are an experienced software architect with expertise in creating Minimal Viable Products (MVPs) using Python. "
     system_prompt += "Given the provided MVP description, your task is to identify and list only the essential components required to build the MVP. "
     system_prompt += "Focus on simplicity and necessity, avoiding any superfluous features or components that do not directly contribute to the MVP's core functionality. "
@@ -125,7 +131,8 @@ def get_component_list(mvp_description):
     system_prompt += "Organize this information in a concise JSON format. "
     system_prompt += "The architecture should be straightforward, promoting modularity and maintainability, while ensuring that each component is vital for the MVP's operation. "
     system_prompt += "Remember, the goal is to create a streamlined, efficient architecture that embodies the MVP philosophy of 'less is more.'"
-
+    system_prompt += "make sure the components are in the following format: \n"
+    system_prompt += f"{comp_list_template}\n"
     response = send_json_request(mvp_description, system_prompt)
     return parse_json_response(response)
 
@@ -210,6 +217,9 @@ def extract_code_from_string(input_string):
     start_markers.append("```css")
     start_markers.append("```java")
     start_markers.append("```cpp")
+    start_markers.append("```Dockerfile")
+    start_markers.append("```yaml")
+    start_markers.append("```nginx")
 
 
     end_marker = "```"
@@ -270,6 +280,7 @@ def determine_language_from_extension(extension):
         'xml': 'XML',
         'json': 'JSON',
         'yaml': 'YAML',
+        'yml': 'YAML',
         'md': 'Markdown',
         'txt': 'Text',
         # Add more mappings as needed
@@ -321,11 +332,10 @@ def critique_code_file(file_name, component_description, mvp_context):
     with open(file_name, 'r') as f:
         file_content = f.read()
     system_prompt = "You are an experienced software developer and code reviewer. "
-    system_prompt += "Given the content of a code file, component description, and MVP context, "
-    system_prompt += "provide a detailed critique of the file. "
-    system_prompt += "Identify areas that need improvement, any missing functionalities or dependencies, "
-    system_prompt += "and suggest how the file could better fulfill its role in the component and MVP. "
-    system_prompt += "Highlight any functions that need additional work and offer guidance on aligning the file with best practices and project requirements. "
+    system_prompt += "Your task is to analyze a Python file in the context of its intended component and MVP. "
+    system_prompt += "Focus on identifying any missing or obviously incorrect functionalities, "
+    system_prompt += "and check for missing or incorrect dependencies. "
+    system_prompt += "Offer concise suggestions for resolving these specific issues. "
     prompt = f"Component Description: {component_description}\n"
     prompt += f"MVP Context: {mvp_context}\n"
     prompt += f"Python File Content:\n\n{file_content}"
@@ -349,19 +359,19 @@ def generate_unit_tests_for_file(file_name, component_description, mvp_context):
     """
     with open(file_name, 'r') as f:
         file_content = f.read()
-    system_prompt = "You are an expert in software testing and Python. "
-    system_prompt += "Given the content of a Python file, the component description, and MVP context, "
-    system_prompt += "create a comprehensive set of unit tests for the file. "
-    system_prompt += "The unit tests should cover all functions and classes, ensuring that each aspect of the file "
-    system_prompt += "works correctly and fulfills its intended role in the component and MVP. "
-    system_prompt += "Consider edge cases, expected behaviors, and error handling in your test cases. "
+    system_prompt = "You are an expert in Python development with a focus on software testing. "
+    system_prompt += "Given the content of a Python file, along with its component description and MVP context, "
+    system_prompt += "your task is to create a comprehensive set of unit tests for the file. "
+    system_prompt += "These tests should comprehensively cover all functions and classes, "
+    system_prompt += "validating correctness, handling edge cases, and ensuring alignment with the component's role in the MVP. "
+    system_prompt += "The tests should provide clear pass/fail output and be ready for immediate use. "
     prompt = f"Component Description: {component_description}\n"
     prompt += f"MVP Context: {mvp_context}\n"
     prompt += f"Python File Content:\n\n{file_content}"
 
     response = send_text_request(prompt, system_prompt)
-    return parse_text_response(response)
-
+    txt_reponse = parse_text_response(response)
+    return extract_code_from_string(txt_reponse)
 
 def auto_fix_test_failure(file_content, unit_test_content, unit_test_output):
     """
