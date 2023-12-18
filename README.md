@@ -1,12 +1,12 @@
-### README for CodeSorcerer Project
+### README for CodeConjurer Project
 
 ---
 
-#### CodeSorcerer: Simplifying Complex Programming with GPT-4
+#### CodeConjurer: Simplifying Complex Programming with GPT-4
 
 ---
 
-**CodeSorcerer** is an evolving tool designed with a vision to redefine the developer's role in the coding process. By automating the mundane and routine aspects of software development, it aims to significantly increase efficiency and productivity. At the core of CodeSorcerer is the integration of the GPT-4 API, transforming the developer's role into a more supervisory one, where they guide and assist the AI in tackling complex or nuanced coding challenges. This shift marks a transition towards a collaborative coding experience where the human expertise complements AI's processing power, making software development more intuitive and less time-intensive.
+**CodeConjurer** is an evolving tool designed with a vision to redefine the developer's role in the coding process. By automating the mundane and routine aspects of software development, it aims to significantly increase efficiency and productivity. At the core of CodeConjurer is the integration of the GPT-4 API, transforming the developer's role into a more supervisory one, where they guide and assist the AI in tackling complex or nuanced coding challenges. This shift marks a transition towards a collaborative coding experience where the human expertise complements AI's processing power, making software development more intuitive and less time-intensive.
 
 ---
 
@@ -23,7 +23,7 @@
 
 #### Current Status
 
-CodeSorcerer is currently a concept under development. Features are being prototyped and may not be fully functional. We're exploring the capabilities of the GPT-4 API and how it can be best utilized in this context.
+CodeConjurer is currently a concept under development. Features are being prototyped and may not be fully functional. We're exploring the capabilities of the GPT-4 API and how it can be best utilized in this context.
 
 ---
 
@@ -59,7 +59,7 @@ Please note that all contributions should adhere to the project's coding standar
 
 #### Disclaimer
 
-CodeSorcerer is an experimental project. It's a humble attempt at harnessing the power of AI in software development, and we're still figuring out the best ways to do this. Users should be aware that the project is not yet ready for production use and is subject to significant changes.
+CodeConjurer is an experimental project. It's a humble attempt at harnessing the power of AI in software development, and we're still figuring out the best ways to do this. Users should be aware that the project is not yet ready for production use and is subject to significant changes.
 
 ---
 
@@ -69,4 +69,4 @@ For any queries or discussions, feel free to open an issue on the GitHub reposit
 
 ---
 
-This README provides an overview of the CodeSorcerer project, maintaining a humble and honest tone about its current state and future aspirations. It's designed to inform potential users and contributors about the project's purpose, current status, and how they can get involved. As the project evolves, you can update this document to reflect new developments and milestones.
+This README provides an overview of the CodeConjurer project, maintaining a humble and honest tone about its current state and future aspirations. It's designed to inform potential users and contributors about the project's purpose, current status, and how they can get involved. As the project evolves, you can update this document to reflect new developments and milestones.
